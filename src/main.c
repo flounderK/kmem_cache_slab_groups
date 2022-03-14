@@ -9,14 +9,19 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define PATHBUF_SIZE PATH_MAX
+#define PATHBUF_SIZE (1+PATH_MAX)
 
 #define DIRPATH "/sys/kernel/slab"
 
 char g_dir_name[PATHBUF_SIZE] = {};
-size_t g_filtered_count = 0;
 
 int filter_points_to_dir(const struct dirent* dent){
+    /*
+     * return 1 for all of the dirents that are
+     * symlinks that point to the directory
+     * stored in g_dir_name.
+     *
+     */
     if (dent == NULL){
         return 0;
     }
@@ -34,7 +39,7 @@ int filter_points_to_dir(const struct dirent* dent){
              dent->d_name);
 
     // -1 to handle off by 1 on null byte from readlink
-    if (readlink(full_pathbuf, pathbuf, sizeof(pathbuf) - 1) < 0){
+    if (readlink(full_pathbuf, pathbuf, sizeof(pathbuf)) < 0){
         perror("readlink");
         printf("%s\n", dent->d_name);
         return 0;
@@ -42,7 +47,6 @@ int filter_points_to_dir(const struct dirent* dent){
 
     if (strncmp(g_dir_name, pathbuf, sizeof(pathbuf)) == 0){
         //printf("%s -> %s\n", dent->d_name, g_dir_name);
-        g_filtered_count += 1;
         return 1;
     }
     return 0;
@@ -50,6 +54,9 @@ int filter_points_to_dir(const struct dirent* dent){
 
 int compar(const struct dirent ** p_dent1,
            const struct dirent ** p_dent2){
+    /*
+     * Compare strings between two dirents' names
+     */
     return strncmp((*p_dent1)->d_name,
                    (*p_dent2)->d_name,
                    sizeof((*p_dent2)->d_name));
@@ -68,6 +75,7 @@ int main (int argc, char *argv[]) {
     }
 
     struct dirent **namelist = NULL;
+    int num_filtered = 0;
     // iterate through all directory entries
     while ((dent = readdir(dir_outer)) != NULL){
         // skip if this isn't a directory
@@ -77,18 +85,19 @@ int main (int argc, char *argv[]) {
 
         // set global dir name to allow this filter hack to work
         strncpy(g_dir_name, dent->d_name, sizeof(dent->d_name));
-        g_filtered_count = 0;
-        scandir(DIRPATH,
-                &namelist,
-                filter_points_to_dir,
-                compar);
+        num_filtered = scandir(DIRPATH,
+                               &namelist,
+                               filter_points_to_dir,
+                               compar);
         if (namelist == NULL){
             //printf("Namelist was null for %s\n", dent->d_name);
             continue;
         }
+        // print out all of the links along with the link target
         printf("%11s ", g_dir_name);
-        for (int i = 0; i < g_filtered_count; i++){
+        for (int i = 0; i < num_filtered; i++){
             printf("%s ", namelist[i]->d_name);
+            free(namelist[i]);
         }
         printf("\n");
     }
