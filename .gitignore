@@ -1,0 +1,7 @@
+*.o
+*.bin
+*.elf
+*.so
+*.swp
+main
+obj/**
