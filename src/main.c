@@ -101,6 +101,7 @@ int main (int argc, char *argv[]) {
         }
         printf("\n");
     }
+    closedir(dir_outer);
 
     return 0;
 }
