@@ -9,7 +9,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-#define PATHBUF_SIZE 1024
+#define PATHBUF_SIZE PATH_MAX
 
 #define DIRPATH "/sys/kernel/slab"
 
@@ -37,6 +37,7 @@ int filter_points_to_dir(const struct dirent* dent){
     if (readlink(full_pathbuf, pathbuf, sizeof(pathbuf) - 1) < 0){
         perror("readlink");
         printf("%s\n", dent->d_name);
+        return 0;
     }
 
     if (strncmp(g_dir_name, pathbuf, sizeof(pathbuf)) == 0){
